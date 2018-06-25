@@ -1,7 +1,7 @@
 ---
 title: "AEMO Analysis"
 author: "Oliver Sheridan-Methven"
-date: "10/17/2017"
+date: "25/06/2018"
 output: 
     pdf_document: 
         fig_caption: yes
@@ -18,8 +18,8 @@ capture weekend and weekday differences.
 
 # The Raw Data
 
-The data available is the RRP (the electricity price), and the daily 
-maximum and minimum temperature values:
+The data available is the RRP (the electricity price measured in AUD \$), 
+and the daily maximum and minimum temperature values:
 
 ```{r, echo=FALSE}
 library(plyr)
@@ -51,8 +51,9 @@ head(df)
 There is a notable outlier in the electricty prices for 20^th^ December 2013, 
 (caused by an electrical storm). Due to the esoteric nature of such an event,
 we do not want to consider such a point for use in everyday price predictions, 
-so we exlude this from our considerations. The resultant dependence between the 
-electricity prices and the minimum daily temperature is shown in  Figure \ref{fig:fig_prices_max_temp}. 
+so we exclude this from our considerations. The resultant dependence between the 
+electricity prices and the minimum daily temperature is shown in 
+Figure \ref{fig:fig_prices_max_temp}. 
 
 ```{r, echo=FALSE, include=FALSE}
 # we notice this has an obvious outlier in December
@@ -66,32 +67,31 @@ summary(df$RRP)
 ```
 
 ```{r fig_prices_max_temp, echo=FALSE, fig.cap="\\label{fig:fig_prices_max_temp}The dependence on the electricity prices with variations in the daily temperature minimum."}
-plot(df$temp_min, df$RRP, xlab = "Max Temp (C)", ylab = "RRP", title("Electricity Prices"))
+plot(df$temp_min, df$RRP, xlab = "Max Temp (C)", ylab = "RRP (AUD $)", title("Electricity Prices"))
 ```
 
 # Non-linear temperature effects 
 
 We recall the linear model
-$$
+\begin{equation}
+\label{eqt:linear_model}
 Y = X\beta + \epsilon.
-$$
+\end{equation}
 
-To assess whether non-linear temperature effects are significant, we fit a 
-linear model and a second order polynomial model to the data. We find the 
-linear model has the $p$-value:
-
-```{r, echo=FALSE}
+```{r, echo=FALSE, include=FALSE}
 # Pulling out the p_value
 linearModel <- lm(df$RRP~df$temp_min)
-anova(linearModel)$'Pr(>F)'[1]
-```
-which is significant. Furthermore, trying a higher order non-linear model
-with quadratic terms achieves a $p$-value of:
-```{r, echo=FALSE}
+linear_model_p_value <- anova(linearModel)$'Pr(>F)'[1]
 nonlinearModel <- lm(df$RRP~df$temp_min + I(df$temp_min^2))
-coef(summary(nonlinearModel))[, "Pr(>|t|)"]
+non_linear_model_p_value <- coef(summary(nonlinearModel))[, "Pr(>|t|)"]
 ```
-We can see these p-values are less than 0.05, and so we believe they are 
+To assess whether non-linear temperature effects are significant, we fit a 
+linear model and a second order polynomial model to the data. We find the 
+linear model \eqref{eqt:linear_model} has the $p$-value $`r linear_model_p_value`$, 
+for which is significant. Furthermore, trying a higher order non-linear model
+with quadratic terms achieves $p$-values of $`r non_linear_model_p_value`$, for the
+intercept, linear, and quadratic terms respectively.
+We can see these $p$-values are less than 0.05, and so we believe they are 
 statistically significant to a 95% confidence level (approximately a $2\sigma$ 
 confidence). 
 
@@ -101,22 +101,26 @@ confidence).
 We can build model matrices using the following R-function: 
 
 ```{r}
-pieLinear <- function(x, k) {
+pieLinear <- function(x, k) 
+{
     # Produces a model matrix for linear models using knots.
-    positive <- function(x) {
+    positive <- function(x) 
+    {
         # Replaces negative values with zeros.
         x[x < 0] <- 0
         return(x)
     }
+    
     modelMatrix <- matrix(c(x))
-    for (i in 1:length(k)) {
+    for (i in 1:length(k)) 
+    {
         modelMatrix <- cbind(modelMatrix, positive(x - k[i]))
     }
     return(modelMatrix)
 }
 ```
 
-Which when given $x = (1,2,\dots,10)$ and knot points $(2,6)$ will output the
+Which when given $x = (1,2,\ldots,10)$ and knot points $(2,6)$ will output the
 model matrix:
 
 ```{r}
