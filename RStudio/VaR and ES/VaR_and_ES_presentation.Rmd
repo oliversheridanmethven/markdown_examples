@@ -2,14 +2,19 @@
 title: "Value-at-risk and expected shortfall"
 author: "Oliver Sheridan-Methven"
 date: "30^th^ October 2017"
+header-includes:
+   - \usepackage{bbm}
+   - \usepackage{physics}
+   - \usepackage{cleveref}
+   - \usepackage{natbib}
+bibliography: references.bib
+fontsize: 12pt
 output: 
     pdf_document: 
       fig_caption: yes
       number_sections: yes
+      citation_package: natbib
 ---
-
-\fontsize{12}{16}
-\selectfont
 
 # Abstract
 
@@ -26,14 +31,16 @@ We define our losses as being described by some process $X$, where for some perc
 $\alpha \in (0, 1)$ we define the *value-at-risk* 
 $\textrm{VaR}_\alpha(X) = \inf_l \{l : \mathbb{P}(X \geq l) \leq 1-\alpha \}$.
 Additionally we define the *expected shortfall* 
-$\textrm{ES}_\alpha(X) = \tfrac{1}{1-\alpha} \int_\alpha^1 \textrm{VaR}_u(X)\, \mathrm{d}u$. 
+$\textrm{ES}_\alpha(X) = \tfrac{1}{1-\alpha} \int_\alpha^1 \textrm{VaR}_u(X) \dd{u}$ \citep[p.~88]{yamai2002comparative}. 
 With these definitions we notice that we would anticipate the value-at-risk and 
 expected shortfall to be positive quantities for most reasonable portfolios 
 which carry a risk of loss. (Common choices for $\alpha$ include 0.95 and 0.99).
+For a more extended treatment and definition of these risk measures we 
+recommend the reader to \citet{yamai2002comparative}.
 
 # Empirical performance
 
-We track the two risk measures in Figure \ref{fig:var_and_es} for the Amazon (AMZN) equity,
+We track the two risk measures in \Cref{fig:var_and_es} for the Amazon (AMZN) equity,
 where value-at-risk is 
 both empirically calculated and also calculated from its theoretical model by having
 a $t$-distribution fitted (with 3 degrees of freedom, estimated using the MLE). 
@@ -94,3 +101,5 @@ for(i in 1:(length(ret)-year_length)){
     Mvar[i]<-mean[i]+spread[i]*qt(alpha,df=3)
 }
 ```
+
+# References
