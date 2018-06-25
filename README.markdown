@@ -20,5 +20,20 @@ in R, Matlab, and Python.
 
  * **R** - R-Studio
  * **MATLAB** - Matlab IDE. 
- * **Python** - Python 2.7 and the JetBrains PyCharm IDE (professional edition is available to students for free).
+ * **Python** - Python 2.7 and the JetBrains PyCharm IDE 
+(professional edition is available to students for free).
+
+### LaTeX
+
+ * While course is not an introduction to LaTeX we will use some of its referencing 
+and mathematical features. This will include:
+  - Making small tables. 
+  - Referencing figures. 
+  - Citing sources.
+  - Writing equations.
+  - Formatting sections.
+  - Including code segments. 
+
+We will however try to keep the external packages used and LaTeX commands to a 
+minimal amount however for ease of learning. 
 
