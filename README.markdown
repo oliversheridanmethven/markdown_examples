@@ -18,14 +18,14 @@ in R, Matlab, and Python.
 
 ## Requirements
 
- * **R** - R-Studio
+ * **R** - RStudio
  * **MATLAB** - Matlab IDE. 
  * **Python** - Python 2.7 and the JetBrains PyCharm IDE 
 (professional edition is available to students for free).
 
 ### LaTeX
 
- * While course is not an introduction to LaTeX we will use some of its referencing 
+While this course is not an introduction to LaTeX, we will use some of its referencing 
 and mathematical features. This will include:
   - Making small tables. 
   - Referencing figures. 
