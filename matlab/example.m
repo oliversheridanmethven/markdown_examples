@@ -1,15 +1,17 @@
 %% Example of Monte Carlo error estimate
-% Author: Oliver Sheridan-Methven
+% Author: Oliver Sheridan-Methven, September 2018.
 % 
-% For Monte Carlo methods we estimate a quantity by constructing its
+% For Monte Carlo methods we estimate a quantity by associating its
 % value to some corresponding expectation, and then estimate this 
 % expected value by simulating many random instances and taking the
 % average. 
 %
 
 %% Hidding code
+%
+%
 % We probably don't want to show the author all the code we wrote, but 
-% maybe a few very chouice snippets. To achieve this set the 
+% maybe a few very choice snippets. To achieve this set the 
 % **include code** option to |false| in the publishing options. 
 
 %% Unbiased estimators
@@ -36,7 +38,7 @@ pi_mean = pi_mean * 4.0 / N;
 pi_error = pi_mean - pi_exact;
 
 %% Error in the estimates 
-% If we want to show the user some results (as we likely do), then is is
+% If we want to show the user some results (as we likely do), then it is
 % helpful to plot these.
 
 M = 24;
@@ -52,6 +54,12 @@ title('Error in Monte Carlo estimate of \pi')
 xlabel('Number of samples')
 ylabel('Absolute error')
 
+%
+% General code comments (not for the reader) are hidden by not opening them
+% with a leading double %% symbol. 
+% 
+
+%%
 % We can see from this that as we increase the number of samples to around 
 % a million we have an answer correct to about 4 decimal places. Hence, 
 % while this works, it is not very efficient. 
