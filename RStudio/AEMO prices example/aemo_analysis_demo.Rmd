@@ -25,7 +25,7 @@ capture weekend and weekday differences.
 
 # The Raw Data
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, include=FALSE}
 library(knitr)  # For making a nice markdown table. 
 library(plyr)
 # Reading in the data:
