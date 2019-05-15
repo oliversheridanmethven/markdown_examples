@@ -6,12 +6,12 @@
 
 ### Last revised
 
-June 2018.
+May 2019.
 
 ### Description
 
 This is a brief introduction to using markdown support for producing reports
-in R, Matlab, and Python. 
+in Python, R, and Matlab.
 
 > This is designed to be a light overview, and for those of you who use LaTeX, 
 > we would recommend using LaTeX in favour of markdown languages.
