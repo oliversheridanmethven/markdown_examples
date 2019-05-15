@@ -31,12 +31,12 @@ We define our losses as being described by some process $X$, where for some perc
 $\alpha \in (0, 1)$ we define the *value-at-risk* 
 $\textrm{VaR}_\alpha(X) = \inf_l \{l \colon \mathbb{P}(X \geq l) \leq 1-\alpha \}$.
 Additionally we define the *expected shortfall* 
-$\textrm{ES}_\alpha(X) = \tfrac{1}{1-\alpha} \int_\alpha^1 \textrm{VaR}_u(X) \dd{u}$ \citep[p.~88]{yamai2002comparative}. 
+$\textrm{ES}_\alpha(X) = \tfrac{1}{1-\alpha} \int_\alpha^1 \textrm{VaR}_u(X) \dd{u}$ \citep[page 88]{yamai2002comparative}. 
 With these definitions we notice that we would anticipate the value-at-risk and 
 expected shortfall to be positive quantities for most reasonable portfolios 
 which carry a risk of loss. (Common choices for $\alpha$ include 0.95 and 0.99).
 For a more extended treatment and definition of these risk measures we 
-recommend the reader to \citet{yamai2002comparative}.
+recommend the reader to \citet[p.~88]{yamai2002comparative}.
 
 # Empirical performance
 

@@ -91,7 +91,7 @@ plot(df$temp_min, df$RRP, xlab = "Minimum Temperature (C)", ylab = "RRP (AUD $)"
 We recall the linear model
 \begin{equation}
 \label{eqt:linear_model}
-Y = X\beta + \epsilon.
+Y = \beta X + \epsilon.
 \end{equation}
 
 ```{r, echo=FALSE, include=FALSE}
@@ -108,7 +108,8 @@ linear model \eqref{eqt:linear_model} has the $p$-value $`r signif(linear_model_
 with quadratic terms achieves $p$-values of $`r signif(non_linear_model_p_value, 2)`$, for the
 intercept, linear, and quadratic terms respectively.
 We can see these $p$-values are less than 0.05, and so we believe they are 
-statistically significant to a 95\% confidence level (approximately a $2\sigma$ 
+statistically significant to a 95\% confidence level (approximately a 
+$2 \sigma$ 
 confidence). 
 
 
