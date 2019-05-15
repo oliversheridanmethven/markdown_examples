@@ -1,1 +1,6 @@
 venv
+*.RData
+*.Rhistory
+*.csv
+*.pdf
+*.png

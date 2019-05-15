@@ -1,0 +1,149 @@
+---
+title: "AEMO Analysis"
+author: "Oliver Sheridan-Methven"
+date: "25^th^ September 2018"
+header-includes:
+   - \usepackage{bm}
+   - \usepackage{bbm}
+   - \usepackage{physics}
+   - \usepackage{cleveref}
+   - \usepackage{natbib}
+fontsize: 12pt
+output: 
+    pdf_document: 
+        fig_caption: yes
+---
+
+
+# Abstract 
+
+In this report we investigate the relationship between electricity prices
+and daytime temperatures in Sydney Australia during 2013. We build a
+second order non-linear model based on the minimum daytime temperature,
+and predict the prices for the first week in January. This model is able to 
+capture weekend and weekday differences.
+
+# The Raw Data
+
+```{r, echo=FALSE, include=FALSE}
+library(knitr)  # For making a nice markdown table. 
+library(plyr)
+# Reading in the data:
+AEMO <- read.csv("AEMOPriceDataSimple.csv")
+SydTemp <- read.csv("SydTemp.csv")
+minTemp <- SydTemp$Minimum.temperature..Degree.C.
+maxTemp <- SydTemp$Maximum.temperature..Degree.C.
+maxTemp <- maxTemp[SydTemp$Year == 2013]
+minTemp <- minTemp[SydTemp$Year == 2013]
+maxTemp <- maxTemp[!is.na(maxTemp)]
+minTemp <- minTemp[!is.na(minTemp)]
+
+Date <- as.Date(AEMO$Date, '%d/%m/%y')
+AEMO <- subset(AEMO, select = c("RRP"))
+AEMO <- cbind(AEMO, Date)
+
+SydTemp <-
+cbind(SydTemp, Date = as.Date(ISOdate(SydTemp$Year, SydTemp$Month, SydTemp$Day)))
+
+df <- na.omit(merge(AEMO, SydTemp, by.x = "Date", by.y = "Date"))
+df <- rename(df, c("Maximum.temperature..Degree.C."="temp_max","Minimum.temperature..Degree.C."="temp_min"))
+df <- subset(df, select = c("temp_max", "temp_min", "Date", 'RRP'))
+example_data <- cbind(head(df)) # cbind ensures we have a (deep) copy.
+```
+
+The data available is the RRP (the electricity price measured in AUD \$), 
+and the daily maximum and minimum temperature values, 
+where some example data 
+is shown in \Cref{tab:tab_example_data}.
+
+```{r tab_example_data, echo=FALSE}
+library(data.table) # For renaming some data column names. 
+setnames(example_data, old=c("temp_max","temp_min"), new=c("Maximum Temperature", "Minimum Temperature"))
+kable(example_data, align='cccc', caption = "\\label{tab:tab_example_data}Some example data illustrating the fields/features available for fitting.")
+```
+
+## Outliers
+
+There is a notable outlier in the electricity prices for 20^th^ December 2013, 
+(caused by an electrical storm). Due to the esoteric nature of such an event,
+we do not want to consider such a point for use in everyday price predictions, 
+so we exclude this from our considerations. The resultant dependence between the 
+electricity prices and the minimum daily temperature is shown in 
+ \Cref{fig:fig_prices_max_temp}. 
+
+```{r, echo=FALSE, include=FALSE}
+# we notice this has an obvious outlier in December
+df[df$RRP > 200, ]
+# we see this corresponds to the large electrical storm on 20th December 2013, so will delete
+# this from our dataset.
+df <- df[df$RRP < 200, ]
+plot(df$Date, df$RRP, xlab = "Date", ylab = "RRP", title("Electricity Prices"))
+# We notice that this perhaps looks a little buldge in Australia's Winter months (May-September)
+summary(df$RRP)
+```
+
+```{r fig_prices_max_temp, echo=FALSE, fig.cap="\\label{fig:fig_prices_max_temp}The dependence on the electricity prices with variations in the daily temperature minimum."}
+plot(df$temp_min, df$RRP, xlab = "Minimum Temperature (C)", ylab = "RRP (AUD $)", title("Electricity Prices"))
+```
+
+# Non-linear temperature effects 
+
+We recall the linear model
+\begin{equation}
+\label{eqt:linear_model}
+Y = \beta X + \epsilon.
+\end{equation}
+
+```{r, echo=FALSE, include=FALSE}
+# Pulling out the p_value
+linearModel <- lm(df$RRP~df$temp_min)
+linear_model_p_value <- anova(linearModel)$'Pr(>F)'[1]
+nonlinearModel <- lm(df$RRP~df$temp_min + I(df$temp_min^2))
+non_linear_model_p_value <- coef(summary(nonlinearModel))[, "Pr(>|t|)"]
+```
+To assess whether non-linear temperature effects are significant, we fit a 
+linear model and a second order polynomial model to the data. We find the 
+linear model \eqref{eqt:linear_model} has the $p$-value $`r signif(linear_model_p_value, 2)`$, 
+ which is significant. Furthermore, trying a higher order non-linear model
+with quadratic terms achieves $p$-values of $`r signif(non_linear_model_p_value, 2)`$, for the
+intercept, linear, and quadratic terms respectively.
+We can see these $p$-values are less than 0.05, and so we believe they are 
+statistically significant to a 95\% confidence level (approximately a 
+$2 \sigma$ 
+confidence). 
+
+
+# Building model matrices
+
+We can build model matrices using the following R-function: 
+
+```{r}
+pieLinear <- function(x, k)
+{
+  # Produces a model matrix for linear models using knots.
+  positive <- function(x)
+  {
+    # Replaces negative values with zeros.
+    x[x < 0] <- 0
+    return(x)
+  }
+  
+  modelMatrix <- matrix(c(x))
+  for (i in 1:length(k))
+  {
+    modelMatrix <- cbind(modelMatrix, positive(x - k[i]))
+  }
+  return(modelMatrix)
+}
+```
+
+Which when given $\bm{x} = (1,2,\ldots,10)$ and knot points $(2,6)$ will output the
+model matrix:
+
+```{r}
+x <- 1:10
+knots <- c(2, 6)
+X <- pieLinear(x, knots)
+print(X)
+```
+
