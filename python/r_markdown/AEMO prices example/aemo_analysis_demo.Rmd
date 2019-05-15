@@ -1,7 +1,7 @@
 ---
 title: "AEMO Analysis"
 author: "Oliver Sheridan-Methven"
-date: "25^th^ September 2018"
+date: "15^th^ May 2019"
 header-includes:
    - \usepackage{bm}
    - \usepackage{bbm}
@@ -14,6 +14,37 @@ output:
         fig_caption: yes
 ---
 
+```{r setup, include=FALSE}
+library(reticulate) # Allowing us to use python code in RMarkdown. 
+library(knitr) # For including tables
+# ADVANCED: using the non default python interpreter. 
+use_python('/home/sheridanmeth/Documents/markdown_examples/python/venv/bin/python') # Only use this if you don't want to use the default system python interpreter, such as if you don't have administrator privileges on your machine for installing packages. 
+```
+
+```{python, echo=FALSE, include=FALSE}
+# Some useful python modules
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import statsmodels.api as sm
+import scipy as sp
+from sklearn.linear_model import LinearRegression
+from sklearn.feature_selection import f_regression
+```
+
+```{python, echo=FALSE, include=FALSE}
+# Setting some default plotting features to give nicer plots. This can be commented out for beginners. 
+rc_fonts = {
+    "text.usetex": True,
+    'text.latex.preview': True, # Gives correct legend alignment.
+    'mathtext.default': 'regular',
+    'figure.figsize': (6, 4),
+    "font.family": "serif",
+    "font.serif": "computer modern roman",
+}
+mpl.rcParams.update(rc_fonts)
+```
 
 # Abstract 
 
@@ -25,41 +56,39 @@ capture weekend and weekday differences.
 
 # The Raw Data
 
-```{r, echo=FALSE, include=FALSE}
-library(knitr)  # For making a nice markdown table. 
-library(plyr)
-# Reading in the data:
-AEMO <- read.csv("AEMOPriceDataSimple.csv")
-SydTemp <- read.csv("SydTemp.csv")
-minTemp <- SydTemp$Minimum.temperature..Degree.C.
-maxTemp <- SydTemp$Maximum.temperature..Degree.C.
-maxTemp <- maxTemp[SydTemp$Year == 2013]
-minTemp <- minTemp[SydTemp$Year == 2013]
-maxTemp <- maxTemp[!is.na(maxTemp)]
-minTemp <- minTemp[!is.na(minTemp)]
-
-Date <- as.Date(AEMO$Date, '%d/%m/%y')
-AEMO <- subset(AEMO, select = c("RRP"))
-AEMO <- cbind(AEMO, Date)
-
-SydTemp <-
-cbind(SydTemp, Date = as.Date(ISOdate(SydTemp$Year, SydTemp$Month, SydTemp$Day)))
-
-df <- na.omit(merge(AEMO, SydTemp, by.x = "Date", by.y = "Date"))
-df <- rename(df, c("Maximum.temperature..Degree.C."="temp_max","Minimum.temperature..Degree.C."="temp_min"))
-df <- subset(df, select = c("temp_max", "temp_min", "Date", 'RRP'))
-example_data <- cbind(head(df)) # cbind ensures we have a (deep) copy.
+```{python, echo=FALSE, include=TRUE}
+# Munging the Sydney temperature data. 
+df = pd.read_csv('SydTemp.csv')
+df = df[df['Year'] == 2013]
+df.columns = [i.lower() for i in df.columns]
+df['date'] = df[['year', 'month', 'day']].apply(lambda x: pd.datetime(*[int(i) for i in x]), axis=1)
+df.columns = ['temp_max' if 'maximum' in i else 'temp_min' if 'minimum' in i else i for i in df.columns]
+df = df[['date', 'temp_max', 'temp_min']]
+# Munging the AEMO price data. 
+df_prices = pd.read_csv("AEMOPriceDataSimple.csv")
+df_prices.columns = [i.lower() for i in df_prices.columns]
+df_prices['date'] = df_prices['date'].apply(pd.to_datetime)
+# Merging the two datasets.
+df = pd.merge(df, df_prices, on='date')
+df = df.dropna()
+df = df.sort_values(by='date')
+# Making a dictionary for having some nice labels for printing to the markdown report or graphs.
+column_names_to_labels = {'date':"Date", 'temp_max': "Maximum Temperature (C)", 'temp_min': "Minimum Temperature (C)", 'rrp': "RRP (A\$)"}  # This will be handy. 
+# I produce a small data subset which I would like to print out. I save this into its own variable as I will need to copy this to an R dataframe object for producing a nice table using kable (sadly not possibly using python dataframes). 
+df_example = df.head()
+df_example = df_example.rename(columns=column_names_to_labels)
 ```
 
-The data available is the RRP (the electricity price measured in AUD \$), 
+
+
+The data available is the RRP (the electricity price measured in AUD A\$), 
 and the daily maximum and minimum temperature values, 
 where some example data 
 is shown in \Cref{tab:tab_example_data}.
 
-```{r tab_example_data, echo=FALSE}
-library(data.table) # For renaming some data column names. 
-setnames(example_data, old=c("temp_max","temp_min"), new=c("Maximum Temperature", "Minimum Temperature"))
-kable(example_data, align='cccc', caption = "\\label{tab:tab_example_data}Some example data illustrating the fields/features available for fitting.")
+```{r tab_example_data, echo=FALSE, include=TRUE}
+example_data = py$df_example
+kable(example_data, align='cccc', row.names = FALSE, caption = "\\label{tab:tab_example_data}Some example data illustrating the fields/features available for fitting.")
 ```
 
 ## Outliers
@@ -71,19 +100,20 @@ so we exclude this from our considerations. The resultant dependence between the
 electricity prices and the minimum daily temperature is shown in 
  \Cref{fig:fig_prices_max_temp}. 
 
-```{r, echo=FALSE, include=FALSE}
+```{python, echo=FALSE, include=FALSE}
 # we notice this has an obvious outlier in December
-df[df$RRP > 200, ]
+outliers = df[df['rrp'] > 200]
 # we see this corresponds to the large electrical storm on 20th December 2013, so will delete
 # this from our dataset.
-df <- df[df$RRP < 200, ]
-plot(df$Date, df$RRP, xlab = "Date", ylab = "RRP", title("Electricity Prices"))
-# We notice that this perhaps looks a little buldge in Australia's Winter months (May-September)
-summary(df$RRP)
+df = df[df['rrp'] < 200]
 ```
 
-```{r fig_prices_max_temp, echo=FALSE, fig.cap="\\label{fig:fig_prices_max_temp}The dependence on the electricity prices with variations in the daily temperature minimum."}
-plot(df$temp_min, df$RRP, xlab = "Minimum Temperature (C)", ylab = "RRP (AUD $)", title("Electricity Prices"))
+```{python fig_prices_max_temp, echo=FALSE, include=TRUE, fig.cap="\\label{fig:fig_prices_max_temp}The dependence on the electricity prices with variations in the daily temperature minimum."}
+plt.rcParams['figure.figsize'] = 7, 4  # If/usually you want to adjust the figure size from the default. 
+plt.plot(df['temp_min'], df['rrp'], 'ko', markersize=2)
+plt.xlabel(column_names_to_labels['temp_min'])
+plt.ylabel(column_names_to_labels['rrp'])
+plt.title("Electricity prices")
 ```
 
 # Non-linear temperature effects 
@@ -94,13 +124,21 @@ We recall the linear model
 Y = \beta X + \epsilon.
 \end{equation}
 
-```{r, echo=FALSE, include=FALSE}
-# Pulling out the p_value
-linearModel <- lm(df$RRP~df$temp_min)
-linear_model_p_value <- anova(linearModel)$'Pr(>F)'[1]
-nonlinearModel <- lm(df$RRP~df$temp_min + I(df$temp_min^2))
-non_linear_model_p_value <- coef(summary(nonlinearModel))[, "Pr(>|t|)"]
+```{python, echo=FALSE, include=TRUE}
+# For a multi variable linear regression using OLS
+X = np.array([(df['temp_min'] ** i).values for i in [1,2]]).transpose()
+X = sm.add_constant(X)
+y = df['rrp'].values
+linear_model_p_value = sm.OLS(y, X[:, :2]).fit().pvalues[-1] # The constant and linear term
+non_linear_model_p_value = sm.OLS(y, X).fit().pvalues # All the features
 ```
+
+```{r, echo=FALSE}
+# We will want these floating point numbers (aka decimals using scientific notation) to be formatted when put inline with the text, so we can either format them here, or format when written inline (where we have opted for the latter).
+linear_model_p_value <- py$linear_model_p_value
+non_linear_model_p_value <- py$non_linear_model_p_value
+```
+
 To assess whether non-linear temperature effects are significant, we fit a 
 linear model and a second order polynomial model to the data. We find the 
 linear model \eqref{eqt:linear_model} has the $p$-value $`r signif(linear_model_p_value, 2)`$, 
@@ -112,38 +150,37 @@ statistically significant to a 95\% confidence level (approximately a
 $2 \sigma$ 
 confidence). 
 
-
+\clearpage
 # Building model matrices
 
 We can build model matrices using the following R-function: 
 
-```{r}
-pieLinear <- function(x, k)
-{
-  # Produces a model matrix for linear models using knots.
-  positive <- function(x)
-  {
-    # Replaces negative values with zeros.
-    x[x < 0] <- 0
-    return(x)
-  }
-  
-  modelMatrix <- matrix(c(x))
-  for (i in 1:length(k))
-  {
-    modelMatrix <- cbind(modelMatrix, positive(x - k[i]))
-  }
-  return(modelMatrix)
-}
+```{python, echo=TRUE}
+def pie_linear(x, k):
+    """
+    Description:
+      Produces a model matrix for linear models using knots. 
+    Input:
+      x: Array, sample points.  
+      k: Array, knot points.
+    Return:
+      Multidimensional array, model matrix. 
+    """
+    positive = lambda y: (y + np.fabs(y)) * 0.5
+    model_matrix = np.zeros([len(x), 1 + len(k)])
+    model_matrix[:, 0] = x
+    for i in range(len(k)): 
+        model_matrix[:, i + 1] = positive(x - k[i])
+    return model_matrix
 ```
 
 Which when given $\bm{x} = (1,2,\ldots,10)$ and knot points $(2,6)$ will output the
 model matrix:
 
-```{r}
-x <- 1:10
-knots <- c(2, 6)
-X <- pieLinear(x, knots)
+```{python, echo=TRUE}
+x = np.linspace(1, 10, 10)
+knots = np.array([2, 6])
+X = pie_linear(x, knots)
 print(X)
 ```
 
