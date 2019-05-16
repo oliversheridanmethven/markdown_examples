@@ -1,7 +1,7 @@
 ---
 title: "Value-at-risk and expected shortfall"
 author: "Oliver Sheridan-Methven"
-date: "25^th^ September 2018"
+date: "16^th^ May 2019"
 header-includes:
    - \usepackage{bbm}
    - \usepackage{physics}
@@ -15,6 +15,40 @@ output:
       number_sections: yes
       citation_package: natbib
 ---
+
+
+```{r setup, include=FALSE}
+library(reticulate) # Allowing us to use python code in RMarkdown. 
+library(knitr) # For including tables
+# ADVANCED: using the non default python interpreter. 
+use_python('/home/sheridanmeth/Documents/markdown_examples/python/venv/bin/python') # Only use this if you don't want to use the default system python interpreter, such as if you don't have administrator privileges on your machine for installing packages. 
+```
+
+```{python, echo=FALSE, include=FALSE}
+# Some useful python modules
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import scipy as sp
+import os
+# Some modules specific to this assignment
+import pandas_datareader.data as web_data
+from scipy.stats import t as t_dist
+```
+
+```{python, echo=FALSE, include=FALSE}
+# Setting some default plotting features to give nicer plots. This can be commented out for beginners. 
+rc_fonts = {
+    "text.usetex": True,
+    'text.latex.preview': True, # Gives correct legend alignment.
+    'mathtext.default': 'regular',
+    'figure.figsize': (6, 4),
+    "font.family": "serif",
+    "font.serif": "computer modern roman",
+}
+mpl.rcParams.update(rc_fonts)
+```
 
 # Abstract
 
@@ -46,7 +80,7 @@ both empirically calculated and also calculated from its theoretical model by ha
 a $t$-distribution fitted (with 3 degrees of freedom, estimated using the MLE). 
 Empirical estimates were computed over a 1 year interval (approximately 256 trading days).
 
-![\label{fig:var_and_es}Emprical and model based risk measures for value-at-risk and expected shortfall at the 95^th^ percentile. At the bottom (grey) we also show a rescaled exponentially weighted moving average volatility profile.](Rplot.png){width=520px}
+![\label{fig:var_and_es}Emprical and model based risk measures for value-at-risk and expected shortfall at the 95^th^ percentile. At the bottom (grey) we also show a rescaled exponentially weighted moving average volatility profile.](Rplot.pdf){width=520px}
 
 We can make several observations:  
 
@@ -70,36 +104,72 @@ demonstrated less discontinuous behaviour compared to the empirically fitted val
 would likely be better suited as a trading based risk measure, where it is favourable to reduce turnover costs. If a more conservative risk measure is required, then the expected shortfall may be more desirable, depending on the appropriate risk requirements for investing. 
 
 \clearpage
-
 # Code
 
 The following code computed the various value-at-risk and empirical shortfalls estimates:
 
-```{r, eval=FALSE}
-# Author: Sam Cohen, October 2017. (Adapted by Oliver Sheridan-Methven)
-library("quantmod")
-library("MASS")
-getSymbols("AMZN", src = "google")  # Looking at Amazon.
-ret <- -diff(log(coredata(AMZN$AMZN.Close)))  # Considering 'losses'
-
-mean <- 0
-spread <- 0
-Evar <- 0  # Empirical expected VaR.
-EES <- 0  # Empirical expected shortfall.
-Mvar <- 0  # Model-based VaR.
-MES <- 0  # Model-based expected shortfall.
-alpha <- 0.95  # The top 5-th percentile.
-year_length <- 256  # Number of trading days per year (approximately).
-
-for (i in 1:(length(ret) - year_length)) {
-  x <- ret[i:(i + year_length)]
-  Evar[i] <- quantile(x, alpha)
-  EES[i] <- mean(x[x > quantile(x, alpha)])
-  param <- fitdistr(x, 't', df = 3)$estimate
-  mean[i] <- param[1]
-  spread[i] <- param[2]
-  Mvar[i] <- mean[i] + spread[i] * qt(alpha, df = 3)
-}
+```{python, echo=TRUE, include=TRUE}
+def get_risk_measures(ticker='AMZN', alpha=0.95, \
+    start=pd.datetime(2007, 01, 01), end=pd.datetime(2018, 01, 01)):
+    """
+    Author:
+      Oliver Sheridan-Methven, May 2019. 
+    Description:
+      Computes empirical and model based estimates for the value-at-risk 
+      (VaR) and the expected-shortfall (ES).
+    Input:
+      ticker: String, stock ticker. 
+      alpha: Float, risk quantile. 
+      start: Datetime, start date. 
+      end: Datetime, end date. 
+    Return:
+      Dataframe, the risk measures and the appropriate data. 
+    """
+    key = os.getenv('TIINGO_API_KEY')
+    df = web_data.DataReader(ticker, 'tiingo', start, end, access_key=key) 
+    # I have created an account with TIINGO to gain an API access key. 
+    # You should also do so or use another data source. 
+    
+    # For convenience we assume contiguous time samples.
+    r = -np.diff(np.log(df['adjClose']))  # The log returns.
+    t = df.index.get_level_values('date')[:len(r)]  # The times.
+    year_length = 256  # Trading days in a year.
+    dof = 3  # For t-distribution  model with 3 degrees of freedom
+    var_empirical, var_model, es_empirical = np.nan* np.zeros((3, len(r)))
+    for i in range(year_length, len(r)):
+        x = r[i-year_length:i]
+        var_empirical[i] = np.quantile(x, alpha)
+        es_empirical[i] =  np.mean(x[x > np.quantile(x, alpha)])
+        mean, spread = t_dist.fit(x, dof)[1:]
+        var_model[i] = mean + spread * t_dist.ppf(alpha, dof)
+    # Throwing the results into a nice DataFrame. 
+    df = pd.DataFrame({'var_empirical': var_empirical, \
+    'var_model': var_model, 'es_empirical': es_empirical, \
+    'returns':r, 'date': t, 'close': df['adjClose'][:-1].values})
+    return df
 ```
+
+
+```{python, echo=FALSE, include=FALSE}
+df = get_risk_measures()
+```
+
+```{python, echo=FALSE, include=FALSE}
+df['vol_ewma'] = (df['returns']**2).ewm(alpha=0.1).mean()
+plt.rcParams['figure.figsize'] = 7, 3
+plt.clf()
+plt.plot(df['date'], df['var_model'], 'k-', label='VaR (model)')
+plt.plot(df['date'], df['var_empirical'], 'r-', label='VaR (empirical)')
+plt.plot(df['date'], df['es_empirical'], 'b-', label='ES (empirical)')
+plt.fill_between(df['date'].values, 15*df['vol_ewma'], linestyle='-', color='grey', label='Volatiltiy (EWMA)', alpha=0.5, linewidth=0)
+plt.title('Empirical and model based risk measures')
+plt.ylabel('Risk measure')
+plt.xlabel('Date')
+plt.legend(frameon=False, loc='upper right')
+plt.xlim(pd.datetime(2008, 1, 1), pd.datetime(2018,1,1))
+plt.ylim(0, 0.1)
+plt.savefig('Rplot.pdf', format='pdf', bbox_inches='tight')
+```
+
 
 # References
