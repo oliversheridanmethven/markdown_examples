@@ -2,13 +2,17 @@
 title: "AEMO Analysis"
 author: "Oliver Sheridan-Methven"
 date: "15^th^ May 2019"
+fontsize: 12pt
 header-includes:
    - \usepackage{bm}
    - \usepackage{bbm}
    - \usepackage{physics}
    - \usepackage{cleveref}
    - \usepackage{natbib}
-fontsize: 12pt
+   - \usepackage{textcomp}
+   - \usepackage[textsize=small,disable]{todonotes}
+   - \usepackage{geometry}
+   - \geometry{right=55mm, left=10mm, top=25mm, bottom=25mm, marginparwidth=50mm}
 output: 
     pdf_document: 
         fig_caption: yes
@@ -21,7 +25,16 @@ library(knitr) # For including tables
 use_python('/home/sheridanmeth/Documents/markdown_examples/python/venv/bin/python') # Only use this if you don't want to use the default system python interpreter, such as if you don't have administrator privileges on your machine for installing packages. 
 ```
 
+
 ```{python, echo=FALSE, include=FALSE}
+# Some WINDOWS users might need this if they are running python 
+# using ANACONDA. And there are issues with the LaTeX interface when 
+# using CONDA which are unresolved, such as 
+# https://stackoverflow.com/q/58502671/5134817
+# Run this after the r line library(reticulate)
+#import os
+#os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = r'C:\Users\Harry\Anaconda3\Library\plugins\platforms'
+
 # Some useful python modules
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -49,10 +62,14 @@ mpl.rcParams.update(rc_fonts)
 # Abstract 
 
 In this report we investigate the relationship between electricity prices
-and daytime temperatures in Sydney Australia during 2013. We build a
+and daytime temperatures in Sydney Australia during 2013.
+\todo{Perhaps we should update this data?}
+We build a
 second order non-linear model based on the minimum daytime temperature,
-and predict the prices for the first week in January. This model is able to 
-capture weekend and weekday differences.
+and predict the prices for the first week in January. 
+\todo[inline=true]{Why do we not use more up to date data?}
+This model is able to 
+capture weekend and weekday differences. \todo{I must improve this report}
 
 # The Raw Data
 
@@ -73,7 +90,9 @@ df = pd.merge(df, df_prices, on='date')
 df = df.dropna()
 df = df.sort_values(by='date')
 # Making a dictionary for having some nice labels for printing to the markdown report or graphs.
-column_names_to_labels = {'date':"Date", 'temp_max': "Maximum Temperature (C)", 'temp_min': "Minimum Temperature (C)", 'rrp': "RRP (A\$)"}  # This will be handy. 
+column_names_to_labels = {'date':"Date", 'temp_max': "Maximum Temperature (C)", 'temp_min': "Minimum Temperature (C)", 'rrp': r'RRP (A\textdollar)'}  # This will be handy. 
+# for WINDOWS users running ANACONDA cf. https://stackoverflow.com/q/58502671/5134817
+
 # I produce a small data subset which I would like to print out. I save this into its own variable as I will need to copy this to an R dataframe object for producing a nice table using kable (sadly not possibly using python dataframes). 
 df_example = df.head()
 df_example = df_example.rename(columns=column_names_to_labels)
@@ -90,6 +109,7 @@ is shown in \Cref{tab:tab_example_data}.
 example_data = py$df_example
 kable(example_data, align='cccc', row.names = FALSE, caption = "\\label{tab:tab_example_data}Some example data illustrating the fields/features available for fitting.")
 ```
+
 
 ## Outliers
 
@@ -141,7 +161,7 @@ non_linear_model_p_value <- py$non_linear_model_p_value
 
 To assess whether non-linear temperature effects are significant, we fit a 
 linear model and a second order polynomial model to the data. We find the 
-linear model \eqref{eqt:linear_model} has the $p$-value $`r signif(linear_model_p_value, 2)`$, 
+linear model \Cref{eqt:linear_model} has the $p$-value $`r signif(linear_model_p_value, 2)`$, 
  which is significant. Furthermore, trying a higher order non-linear model
 with quadratic terms achieves $p$-values of $`r signif(non_linear_model_p_value, 2)`$, for the
 intercept, linear, and quadratic terms respectively.

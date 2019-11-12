@@ -8,7 +8,8 @@ header-includes:
    - \usepackage{physics}
    - \usepackage{cleveref}
    - \usepackage{natbib}
-fontsize: 12pt
+   - \usepackage{textcomp}
+fontsize: 10pt
 output: 
     pdf_document: 
         fig_caption: yes
@@ -47,7 +48,7 @@ cbind(SydTemp, Date = as.Date(ISOdate(SydTemp$Year, SydTemp$Month, SydTemp$Day))
 
 df <- na.omit(merge(AEMO, SydTemp, by.x = "Date", by.y = "Date"))
 df <- rename(df, c("Maximum.temperature..Degree.C."="temp_max","Minimum.temperature..Degree.C."="temp_min"))
-df <- subset(df, select = c("temp_max", "temp_min", "Date", 'RRP'))
+df <- subset(df, select = c("temp_max", "temp_min", "Date", "RRP \\textdollar"))
 example_data <- cbind(head(df)) # cbind ensures we have a (deep) copy.
 ```
 
@@ -77,7 +78,7 @@ df[df$RRP > 200, ]
 # we see this corresponds to the large electrical storm on 20th December 2013, so will delete
 # this from our dataset.
 df <- df[df$RRP < 200, ]
-plot(df$Date, df$RRP, xlab = "Date", ylab = "RRP", title("Electricity Prices"))
+plot(df$Date, df$RRP, xlab = "Date", ylab = "RRP \textdollar", title("Electricity Prices"))
 # We notice that this perhaps looks a little buldge in Australia's Winter months (May-September)
 summary(df$RRP)
 ```
